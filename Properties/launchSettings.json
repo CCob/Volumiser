@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "DiscImage.EbsDiscTest": {
+      "commandName": "Project",
+      "commandLineArgs": " --image \"Windows 11 Insider.vhdx\""
+    }
+  }
+}
