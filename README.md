@@ -13,10 +13,12 @@ Volumiser would not be possible without the brilliant [DiscUtils](https://github
 Volumiser supports the following disk image formats:
 
 * Amazon EBS Snapshots
+* Direct Raw Disk (a la NinjaCopy)
 * VHDX
 * VMDK
 * VHD
 * VHDX
+
 
 along with the following file systems:
 
@@ -37,6 +39,21 @@ EBS snapshot can be loaded via the custom EBS protocol which levereges the EBS d
 
 ```powershell
 Volumiser.exe --image "ebs://snap-12345675c8173707d"
+```
+
+**Direct Raw Disk Example**
+
+Providing you have administrator rights, local raw disk volumes can be accessed via the `\\.\PhysicalDriveX` image specifier or `\\.\C:`.  When using the `PhysicalDrive` method, this will parse all volumes contained on the entire disk.  In situations where a volume is encrypted with BitLocker, you can switch to the drive letter method, this will access the single volume exposed by the drive letter which will automatically be decrypted by Windows when the volume sectors are read.
+
+*Reading all the volumes present on the first physical drive attached to the host*
+```powershell
+Volumiser.exe --image "\\.\PhysicalDrive0"
+```
+
+
+*Reading the single volume attached to the drive letter C: (use this method for BitLocker'd volumes)*
+```powershell
+Volumiser.exe --image "\\.\C:"
 ```
 
 **Local Image File Example**

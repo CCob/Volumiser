@@ -104,80 +104,88 @@ namespace DiscImage.EbsDiscTest {
     
             VirtualDisk disk;
 
-            if (image.StartsWith("ebs://")) {
-                disk = GetEBSDiskImage(image.Substring(6), profile, awsAccessKey, awsAccessSecret, awsRegion);
-                var ebsDisk = (Disk)disk;
-            } else {
-                disk = GetLocalDiskImage(image);                
-            }
+            try {
 
-            if (disk == null) {
-                Console.WriteLine($"[!] Failed to open disk {image}");
-                return;
-            }
-
-            VolumeManager = new VolumeManager(disk);
-
-            if (command != null) {
-
-                Console.WriteLine($"[+] Opened disk image, Size: {disk.Capacity / 1024 / 1024 / 1024}GB");
-
-                if (command == "volumes") {
-
-                    foreach (var volume in VolumeManager.GetLogicalVolumes()) {
-
-                        var volumeStream = volume.Open();
-                        var fsType = FileSystemManager.DetectFileSystems(volumeStream);
-
-                        try {
-                            Console.WriteLine($"\tVolume ID: {volume.Identity}, Size: {volume.Length / 1024 / 1024} MB, Type: {(fsType.Length > 0 ? fsType[0].Description : "Unknown")}");
-                        } catch (Exception) { }
-                    }
-
-                } else if (command == "ls" || command == "download") {
-
-                    var pathStart = path.LastIndexOf(":");
-                    var volumePath = path.Substring(0, pathStart);
-                    var filePath = path.Substring(pathStart + 1);
-                    var volume = VolumeManager.GetVolume(volumePath);
-
-                    var sparseStream = volume.Open();
-                    Console.WriteLine($"[+] Opened volume with ID {volumePath}");
-
-                    var fsInfo = FileSystemManager.DetectFileSystems(sparseStream);
-                    var fs = fsInfo[0].Open(sparseStream);
-
-                    if (command == "ls") {
-
-                        foreach (var file in fs.GetDirectories(filePath)) {
-                            var dirInfo = fs.GetDirectoryInfo(file);
-                            Console.WriteLine($"{dirInfo.LastWriteTimeUtc}  {"DIR",-15} {Path.GetFileName(file)}");
-                        }
-
-                        foreach (var file in fs.GetFiles(filePath)) {
-                            var fileInfo = fs.GetFileInfo(file);
-                            Console.WriteLine($"{fileInfo.LastWriteTimeUtc} { $"{fileInfo.Length / 1024.0 / 1024.0: 0.00}MB",-16} {Path.GetFileName(file)}");
-                        }
-
-                    } else {
-
-                        var fileStream = fs.OpenFile(filePath, FileMode.Open, FileAccess.Read);
-                        Console.WriteLine($"[+] Opened file with path {filePath} for with size: {fileStream.Length}");
-                        File.WriteAllBytes(Path.GetFileName(filePath), StreamUtilities.ReadExact(fileStream, (int)fileStream.Length));
-                    }
+                if (image.StartsWith("ebs://")) {
+                    disk = GetEBSDiskImage(image.Substring(6), profile, awsAccessKey, awsAccessSecret, awsRegion);
+                    var ebsDisk = (Disk)disk;
+                } else if (image.StartsWith(@"\\.\")) {
+                    disk = new DiscUtils.RawDisk.Disk(image);
+                } else {
+                    disk = GetLocalDiskImage(image);
                 }
-            } else {
 
-                Volumes = VolumeManager.GetLogicalVolumes().Select(v => v.Identity);
-                UI = new Volumiser.UI();
-                UI.ItemSelected += Ui_ItemSelected;
-                UI.ItemChanged += UI_ItemChanged;
-                UI.UpdateCurrentPathItems(Volumes.ToList());
-                
-                if(Volumes.Count() > 0)
-                    UI_ItemChanged(Volumes.First());
-                
-                UI.Run();
+                if (disk == null) {
+                    Console.WriteLine($"[!] Failed to open disk {image}");
+                    return;
+                }
+
+                VolumeManager = new VolumeManager(disk);
+
+                if (command != null) {
+
+                    Console.WriteLine($"[+] Opened disk image, Size: {disk.Capacity / 1024 / 1024 / 1024}GB");
+
+                    if (command == "volumes") {
+
+                        foreach (var volume in VolumeManager.GetLogicalVolumes()) {
+
+                            var volumeStream = volume.Open();
+                            var fsType = FileSystemManager.DetectFileSystems(volumeStream);
+
+                            try {
+                                Console.WriteLine($"\tVolume ID: {volume.Identity}, Size: {volume.Length / 1024 / 1024} MB, Type: {(fsType.Length > 0 ? fsType[0].Description : "Unknown")}");
+                            } catch (Exception) { }
+                        }
+
+                    } else if (command == "ls" || command == "download") {
+
+                        var pathStart = path.LastIndexOf(":");
+                        var volumePath = path.Substring(0, pathStart);
+                        var filePath = path.Substring(pathStart + 1);
+                        var volume = VolumeManager.GetVolume(volumePath);
+
+                        var sparseStream = volume.Open();
+                        Console.WriteLine($"[+] Opened volume with ID {volumePath}");
+
+                        var fsInfo = FileSystemManager.DetectFileSystems(sparseStream);
+                        var fs = fsInfo[0].Open(sparseStream);
+
+                        if (command == "ls") {
+
+                            foreach (var file in fs.GetDirectories(filePath)) {
+                                var dirInfo = fs.GetDirectoryInfo(file);
+                                Console.WriteLine($"{dirInfo.LastWriteTimeUtc}  {"DIR",-15} {Path.GetFileName(file)}");
+                            }
+
+                            foreach (var file in fs.GetFiles(filePath)) {
+                                var fileInfo = fs.GetFileInfo(file);
+                                Console.WriteLine($"{fileInfo.LastWriteTimeUtc} { $"{fileInfo.Length / 1024.0 / 1024.0: 0.00}MB",-16} {Path.GetFileName(file)}");
+                            }
+
+                        } else {
+
+                            var fileStream = fs.OpenFile(filePath, FileMode.Open, FileAccess.Read);
+                            Console.WriteLine($"[+] Opened file with path {filePath} for with size: {fileStream.Length}");
+                            File.WriteAllBytes(Path.GetFileName(filePath), StreamUtilities.ReadExact(fileStream, (int)fileStream.Length));
+                        }
+                    }
+                } else {
+
+                    Volumes = VolumeManager.GetLogicalVolumes().Select(v => v.Identity);
+                    UI = new Volumiser.UI();
+                    UI.ItemSelected += Ui_ItemSelected;
+                    UI.ItemChanged += UI_ItemChanged;
+                    UI.UpdateCurrentPathItems(Volumes.ToList());
+
+                    if (Volumes.Count() > 0)
+                        UI_ItemChanged(Volumes.First());
+
+                    UI.Run();
+                }
+
+            }catch(Exception e) {
+                Console.WriteLine($"[!] {e.Message}");
             }
         }
 
@@ -228,7 +236,7 @@ namespace DiscImage.EbsDiscTest {
                             CurrentPath = "";
                             UI.VolumeLabel = $"Volume: {fileSystem.FriendlyName} {GetHumanSize(fileSystem.Size)}";
                         } else {
-                            UI.VolumeLabel = $"Volume: Unknown";
+                            UI.VolumeLabel = $"Volume: Unknown {GetHumanSize(volume.Length)}";
                         }
                     }
                 }
