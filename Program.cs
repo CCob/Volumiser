@@ -4,6 +4,7 @@ using DiscUtils;
 using DiscUtils.Ebs;
 using DiscUtils.Setup;
 using DiscUtils.Streams;
+using DiscUtils.Ntfs;
 using Mono.Options;
 using System;
 using System.Linq;
@@ -150,7 +151,11 @@ namespace DiscImage.EbsDiscTest {
 
                         var fsInfo = FileSystemManager.DetectFileSystems(sparseStream);
                         var fs = fsInfo[0].Open(sparseStream);
-
+                        if (fs is NtfsFileSystem)
+                        {
+                            ((NtfsFileSystem)fs).NtfsOptions.HideHiddenFiles = false;
+                            ((NtfsFileSystem)fs).NtfsOptions.HideSystemFiles = false;
+                        }
                         if (command == "ls") {
 
                             foreach (var file in fs.GetDirectories(filePath)) {
@@ -277,6 +282,11 @@ namespace DiscImage.EbsDiscTest {
                         CurrentFileSystem = fsInfo[0].Open(sparseStream);
                         CurrentPath = "";
                         UI.VolumeLabel = $"Volume: {CurrentFileSystem.FriendlyName} {GetHumanSize(CurrentFileSystem.Size)}";
+                        if (CurrentFileSystem is NtfsFileSystem)
+                        {
+                            ((NtfsFileSystem)CurrentFileSystem).NtfsOptions.HideHiddenFiles = false;
+                            ((NtfsFileSystem)CurrentFileSystem).NtfsOptions.HideSystemFiles = false;
+                        }
                         UpdateView();
                     }
                 }
