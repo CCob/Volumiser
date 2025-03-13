@@ -70,7 +70,7 @@ namespace DiscImage.EbsDiscTest {
                 .Add("awskey=", "AWS access key to use", v => awsAccessKey = v)
                 .Add("awssecret=", "AWS secret", v => awsAccessSecret = v)
                 .Add("awsregion=", "AWS region", v => awsRegion = v)
-                .Add("command=", "The command to execute: [volumes|ls|extract]", v => command = v)
+                .Add("command=", "The command to execute: [volumes|file_list|ls|extract]", v => command = v)
                 .Add("image=", @"The path to the virtual disk, e.g. C:\temp\backup.vhdx or ebs://snapshotid", v => image = v)
                 .Add("path=", @"Volume and path to query within the virtual disk filesystem ", v => path = v);
 
@@ -139,7 +139,7 @@ namespace DiscImage.EbsDiscTest {
                             } catch (Exception) { }
                         }
 
-                    } else if (command == "ls" || command == "download") {
+                    } else if (command == "ls" || command == "extract") {
 
                         var pathStart = path.LastIndexOf(":");
                         var volumePath = path.Substring(0, pathStart);
@@ -171,8 +171,43 @@ namespace DiscImage.EbsDiscTest {
                         } else {
 
                             var fileStream = fs.OpenFile(filePath, FileMode.Open, FileAccess.Read);
-                            Console.WriteLine($"[+] Opened file with path {filePath} for with size: {fileStream.Length}");
+                            Console.WriteLine($"[+] Opened file with path {filePath} for with size: {fileStream.Length / 1024.0 / 1024.0: 0.00}MB");
                             File.WriteAllBytes(Path.GetFileName(filePath), StreamUtilities.ReadExact(fileStream, (int)fileStream.Length));
+                        }
+                    } else if (command == "file_list") {
+                        foreach (var volume in VolumeManager.GetLogicalVolumes()) {
+                            using (var sparseStream = volume.Open()) {
+                                var fsInfo = FileSystemManager.DetectFileSystems(sparseStream);
+
+                                if (fsInfo != null && fsInfo.Length > 0) {
+                                    DiscFileSystem fileSystem = fsInfo[0].Open(sparseStream);
+
+                                    if (fileSystem is NtfsFileSystem) {
+                                        ((NtfsFileSystem)fileSystem).NtfsOptions.HideHiddenFiles = false;
+                                        ((NtfsFileSystem)fileSystem).NtfsOptions.HideSystemFiles = false;
+                                    }
+                                    List<string> files = new List<string>();
+                                    List<string> newDirs = new List<string>();
+                                    List<string> files_dirs = new List<string>();
+                                    List<string> dirs = new List<string>();
+                                    dirs.Add("");
+
+                                    while(dirs.Count > 0) {
+                                        files = fileSystem.GetFiles(dirs.First()).ToList();
+                                        newDirs = fileSystem.GetDirectories(dirs.First()).ToList();
+                                        dirs.RemoveAt(0);
+                                        dirs.InsertRange(0, newDirs);
+                                        files_dirs.AddRange(newDirs.Select(x => x + "\\").ToList());
+                                        files_dirs.AddRange(files);
+                                        files_dirs.Sort();
+
+                                        foreach (string f in files_dirs) {
+                                            Console.WriteLine($"{volume.Identity}:{f}");
+                                        }
+                                        files_dirs.Clear();
+                                    }
+                                }
+                            }
                         }
                     }
                 } else {
