@@ -3,9 +3,6 @@ using Amazon.Runtime;
 using DiscUtils.Streams;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DiscUtils.Ebs {
     public class Disk : VirtualDisk {
@@ -33,7 +30,7 @@ namespace DiscUtils.Ebs {
             Size = ebsMappedStream.SnapshotBlocks.Count * BlockSize;
         }
 
-        public override Geometry Geometry => Geometry.FromCapacity(sparseStream.Length);
+        public override Geometry? Geometry => DiscUtils.Geometry.FromCapacity(sparseStream.Length);
 
         public override VirtualDiskClass DiskClass => VirtualDiskClass.HardDisk;
 
@@ -50,17 +47,19 @@ namespace DiscUtils.Ebs {
                     CanBeHardDisk = true,
                     DeterministicGeometry = true,
                     PreservesBiosGeometry = false,
-                    CalcGeometry = c => Geometry.FromCapacity(c)
+                    CalcGeometry = c => DiscUtils.Geometry.FromCapacity(c)
                 };
             }
-        }            
-        
+        }
+
+        public override bool CanWrite => throw new NotImplementedException();
+
         public override VirtualDisk CreateDifferencingDisk(DiscFileSystem fileSystem, string path) {
             throw new NotImplementedException();
 
         }
 
-        public override VirtualDisk CreateDifferencingDisk(string path) {
+        public override VirtualDisk CreateDifferencingDisk(string path, bool useAsync) {
             throw new NotImplementedException();
         }
     }

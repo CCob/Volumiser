@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections;
 using Terminal.Gui;
 
 namespace Volumiser {
@@ -125,8 +121,6 @@ namespace Volumiser {
             Application.Top.Add(topLevel);
 
             Application.Top.KeyPress += Top_KeyPress;
-
-
         }
 
         private void Top_KeyPress(View.KeyEventEventArgs obj) {
@@ -139,7 +133,12 @@ namespace Volumiser {
         }
 
         public void Run() {
-            Application.Run();
+            try{
+                Application.Run();
+            }
+            finally {
+                Application.Shutdown();
+            }
         }
 
         public void UpdateCurrentPathItems(IList items) {

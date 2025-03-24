@@ -1,17 +1,9 @@
-﻿using Amazon;
-using Amazon.EBS;
-using Amazon.EBS.Model;
-using Amazon.Runtime;
-using DiscUtils.Streams;
+﻿using DiscUtils.Streams;
 using Microsoft.Win32.SafeHandles;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Net;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DiscUtils.RawDisk {
     public class RawDiskStream : SparseStream {
@@ -89,6 +81,14 @@ namespace DiscUtils.RawDisk {
         }
 
         public override void Write(byte[] buffer, int offset, int count) {
+            throw new NotImplementedException();
+        }
+
+        public override int Read(Span<byte> buffer) {
+            throw new NotImplementedException();
+        }
+
+        public override void Write(ReadOnlySpan<byte> buffer) {
             throw new NotImplementedException();
         }
     }

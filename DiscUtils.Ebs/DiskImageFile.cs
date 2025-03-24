@@ -1,12 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Net;
-using Amazon;
+﻿using Amazon;
 using Amazon.EBS;
 using Amazon.EBS.Model;
 using Amazon.Runtime;
-using DiscUtils.Internal;
 using DiscUtils.Streams;
+using System;
+using System.Collections.Generic;
+using System.Net;
 
 namespace DiscUtils.Ebs {
 
@@ -52,10 +51,6 @@ namespace DiscUtils.Ebs {
 
         public override FileLocator RelativeFileLocator => throw new NotImplementedException();
 
-        public override string[] GetParentLocations() {
-            throw new NotImplementedException();
-        }
-
         public override SparseStream OpenContent(SparseStream parent, Ownership ownsParent) {
 
             SparseStream theParent = parent;
@@ -77,6 +72,7 @@ namespace DiscUtils.Ebs {
                 return result;                              
             } 
         }
-            
+
+        public override bool CanWrite => throw new NotImplementedException();
     }
 }

@@ -8,16 +8,17 @@ The tool was written to combat a regular problem where massive 100G+ disk images
 
 ![Volumiser Interactive GUI](Volumiser.gif)
 
-Volumiser would not be possible without the brilliant [DiscUtils](https://github.com/DiscUtils/DiscUtils) project that does most of the heavy lifting parsing volumes and file systems within the virtual disks.  Whilst the EBS volume support is a feature added as part of volumiser, this also leverages this excellent library to add this particular disk image format.
+Volumiser would not be possible without the brilliant [DiscUtils](https://github.com/DiscUtils/DiscUtils) project and the fork from [LTRData](https://github.com/LTRData/DiscUtils/) that do most of the heavy lifting parsing volumes and file systems within the virtual disks. Whilst the EBS volume support is a feature added as part of volumiser, this also leverages this excellent library to add this particular disk image format.
 
 Volumiser supports the following disk image formats:
 
 * Amazon EBS Snapshots
 * Direct Raw Disk (a la NinjaCopy)
-* VHDX
 * VMDK
 * VHD
 * VHDX
+* VDI
+* IMG
 
 
 along with the following file systems:
@@ -81,7 +82,7 @@ Volumiser.exe --image "c:\Virtual Machines\Domain Controller.vhdx" --command vol
         Volume ID: VLG{bdd5d39c-a214-4ac2-a6b9-2477fe02ffc1}, Size: 553 MB, Type: Microsoft NTFS
 ```
 
-**Listing File System**
+**Listing File System folder**
 
 Once the volumes have been discovered, the file system for each volume can be listed
 
@@ -102,11 +103,21 @@ Volumiser.exe --image "c:\Virtual Machines\Domain Controller.vhdx" --command ls 
 
 **"Downloading" Files**
 
-Files can be "downloaded" to your local machine using the download command
+Files can be "downloaded" to your local machine using the extract command
 
 ```
-Volumiser.exe --image "c:\Virtual Machines\Domain Controller.vhdx" --command download --path "VLG{166c0197-909e-419d-a431-2d9b9df4d1fe}:\Windows\system32\config\SYSTEM"
+Volumiser.exe --image "c:\Virtual Machines\Domain Controller.vhdx" --command extract --path "VLG{166c0197-909e-419d-a431-2d9b9df4d1fe}:\Windows\system32\config\SYSTEM"
 [+] Opened disk image, Size: 127GB
 [+] Opened volume with ID VLG{166c0197-909e-419d-a431-2d9b9df4d1fe}
 [+] Opened file with path \Windows\System32\config\SYSTEM for with size: 12058624
+```
+
+**Listing File System file list**
+
+The file list of all volumes of the file system can be listed
+
+```
+Volumiser.exe --image "c:\Virtual Machines\Domain Controller.vhdx" --command file_list
+[+] Opened disk image, Size: 127GB
+...
 ```

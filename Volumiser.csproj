@@ -8,14 +8,13 @@
   <ItemGroup>
     <PackageReference Include="AWSSDK.EBS" Version="3.7.100.9" />
     <PackageReference Include="AWSSDK.SecurityToken" Version="3.7.100.4" />
-    <PackageReference Include="DiscUtils.Containers" Version="0.16.13" />
-    <PackageReference Include="DiscUtils.FileSystems" Version="0.16.13" />
-    <PackageReference Include="DiscUtils.Lvm" Version="0.16.13" />
     <PackageReference Include="dnMerge" Version="0.5.15">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Terminal.Gui" Version="1.8.2" />
+    <PackageReference Include="LTRData.DiscUtils.Containers" Version="1.0.51" />
+    <PackageReference Include="LTRData.DiscUtils.FileSystems" Version="1.0.51" />
+    <PackageReference Include="Terminal.Gui" Version="1.17.1" />
   </ItemGroup>
 
 </Project>

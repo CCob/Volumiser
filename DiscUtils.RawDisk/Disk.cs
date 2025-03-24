@@ -1,13 +1,9 @@
-﻿using DiscUtils;
-using DiscUtils.Streams;
+﻿using DiscUtils.Streams;
 using Microsoft.Win32.SafeHandles;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DiscUtils.RawDisk {
     public class Disk : VirtualDisk {
@@ -103,7 +99,7 @@ namespace DiscUtils.RawDisk {
         }
 
 
-        public override Geometry Geometry => geometry;
+        public override Geometry? Geometry => geometry;
 
         public override VirtualDiskClass DiskClass => VirtualDiskClass.HardDisk;
 
@@ -120,20 +116,19 @@ namespace DiscUtils.RawDisk {
                     CanBeHardDisk = true,
                     DeterministicGeometry = true,
                     PreservesBiosGeometry = false,
-                    CalcGeometry = c => Geometry.FromCapacity(c)
+                    CalcGeometry = c => DiscUtils.Geometry.FromCapacity(c)
                 };
             }
         }
+
+        public override bool CanWrite => throw new NotImplementedException();
 
         public override VirtualDisk CreateDifferencingDisk(DiscFileSystem fileSystem, string path) {
             throw new NotImplementedException();
         }
 
-        public override VirtualDisk CreateDifferencingDisk(string path) {
+        public override VirtualDisk CreateDifferencingDisk(string path, bool useAsync) {
             throw new NotImplementedException();
         }
-
-
-
     }
 }
