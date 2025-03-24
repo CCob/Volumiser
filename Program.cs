@@ -70,7 +70,7 @@ namespace DiscImage.EbsDiscTest {
                 .Add("awskey=", "AWS access key to use", v => awsAccessKey = v)
                 .Add("awssecret=", "AWS secret", v => awsAccessSecret = v)
                 .Add("awsregion=", "AWS region", v => awsRegion = v)
-                .Add("command=", "The command to execute: [volumes|ls|extract]", v => command = v)
+                .Add("command=", "The command to execute: [volumes|file_list|ls|extract]", v => command = v)
                 .Add("image=", @"The path to the virtual disk, e.g. C:\temp\backup.vhdx or ebs://snapshotid", v => image = v)
                 .Add("path=", @"Volume and path to query within the virtual disk filesystem ", v => path = v);
 
@@ -125,7 +125,7 @@ namespace DiscImage.EbsDiscTest {
 
                 if (command != null) {
 
-                    Console.WriteLine($"[+] Opened disk image, Size: {disk.Capacity / 1024 / 1024 / 1024}GB");
+                    Console.WriteLine($"[+] Opened disk image, Size: {GetHumanSize(disk.Capacity)}");
 
                     if (command == "volumes") {
 
@@ -135,11 +135,11 @@ namespace DiscImage.EbsDiscTest {
                             var fsType = FileSystemManager.DetectFileSystems(volumeStream);
 
                             try {
-                                Console.WriteLine($"\tVolume ID: {volume.Identity}, Size: {volume.Length / 1024 / 1024} MB, Type: {(fsType.Length > 0 ? fsType[0].Description : "Unknown")}");
+                                Console.WriteLine($"\tVolume ID: {volume.Identity}, Size: {GetHumanSize(volume.Length)}, Type: {(fsType.Count > 0 ? fsType[0].Description : "Unknown")}");
                             } catch (Exception) { }
                         }
 
-                    } else if (command == "ls" || command == "download") {
+                    } else if (command == "ls" || command == "extract") {
 
                         var pathStart = path.LastIndexOf(":");
                         var volumePath = path.Substring(0, pathStart);
@@ -165,14 +165,47 @@ namespace DiscImage.EbsDiscTest {
 
                             foreach (var file in fs.GetFiles(filePath)) {
                                 var fileInfo = fs.GetFileInfo(file);
-                                Console.WriteLine($"{fileInfo.LastWriteTimeUtc} { $"{fileInfo.Length / 1024.0 / 1024.0: 0.00}MB",-16} {Path.GetFileName(file)}");
+                                Console.WriteLine($"{fileInfo.LastWriteTimeUtc} { $"{GetHumanSize(fileInfo.Length)}",-16} {Path.GetFileName(file)}");
                             }
 
                         } else {
 
                             var fileStream = fs.OpenFile(filePath, FileMode.Open, FileAccess.Read);
-                            Console.WriteLine($"[+] Opened file with path {filePath} for with size: {fileStream.Length}");
-                            File.WriteAllBytes(Path.GetFileName(filePath), StreamUtilities.ReadExact(fileStream, (int)fileStream.Length));
+                            Console.WriteLine($"[+] Opened file with path {filePath} for with size: {GetHumanSize(fileStream.Length)}");
+                            File.WriteAllBytes(Path.GetFileName(filePath), StreamUtilities.ReadExactly(fileStream, (int)fileStream.Length));
+                        }
+                    } else if (command == "file_list") {
+                        foreach (var volume in VolumeManager.GetLogicalVolumes()) {
+                            using (var sparseStream = volume.Open()) {
+                                var fsInfo = FileSystemManager.DetectFileSystems(sparseStream);
+
+                                if (fsInfo != null && fsInfo.Count > 0) {
+                                    DiscFileSystem fileSystem = fsInfo[0].Open(sparseStream);
+
+                                    if (fileSystem is NtfsFileSystem) {
+                                        ((NtfsFileSystem)fileSystem).NtfsOptions.HideHiddenFiles = false;
+                                        ((NtfsFileSystem)fileSystem).NtfsOptions.HideSystemFiles = false;
+                                    }
+
+                                    List<string> entries = new List<string>();
+                                    List<string> dirs = new List<string>();
+                                    dirs.Add("");
+
+                                    while (dirs.Count > 0) {
+                                        if (dirs.First() == "" || (fileSystem.Exists(dirs.First()) && (fileSystem.GetAttributes(dirs.First()) & FileAttributes.Directory) == FileAttributes.Directory)) {
+                                            entries = fileSystem.GetFileSystemEntries(dirs.First()).ToList();
+                                            dirs.RemoveAt(0);
+                                            dirs.InsertRange(0, entries);
+
+                                            foreach (string f in entries) {
+                                                Console.WriteLine($"{volume.Identity}:{f}");
+                                            }
+                                        } else {
+                                            dirs.RemoveAt(0);
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 } else {
@@ -195,22 +228,22 @@ namespace DiscImage.EbsDiscTest {
         }
 
         private static void UI_ItemChanged(string itemValue) {
-
             string itemLabel;
            
             if (itemValue != ".." && CurrentPath != null && CurrentFileSystem != null) {
+                itemLabel = $" | Path: {CurrentPath}\\{itemValue}";
+                bool isNotDirectory = (CurrentFileSystem.GetAttributes($"{CurrentPath}\\{itemValue}") & FileAttributes.Directory) != FileAttributes.Directory;
+                bool isNotReparsePoint = (CurrentFileSystem.GetAttributes($"{CurrentPath}\\{itemValue}") & FileAttributes.ReparsePoint) != FileAttributes.ReparsePoint;
 
-                itemLabel = $"Path: {CurrentPath}\\{itemValue}";
-
-                if ((CurrentFileSystem.GetAttributes($"{CurrentPath}\\{itemValue}") & FileAttributes.Directory) != FileAttributes.Directory) {
+                if (CurrentFileSystem.Exists($"{CurrentPath}\\{itemValue}") && isNotDirectory && isNotReparsePoint) {
                     var fileLen = CurrentFileSystem.GetFileLength($"{CurrentPath}\\{itemValue}");
-                    itemLabel += $" {GetHumanSize(fileLen)}";
+                    itemLabel += $" | Size: {GetHumanSize(fileLen)}";
 
                     if(fileLen < 10240 && fileLen > 0 && (itemValue.EndsWith(".txt") || itemValue.EndsWith(".log") || itemValue.EndsWith(".config") || itemValue.EndsWith(".ini") || itemValue.EndsWith(".xml"))) {
 
                         using (var fileStream = CurrentFileSystem.OpenFile($"{CurrentPath}\\{itemValue}", FileMode.Open, FileAccess.Read)) {
                             
-                            var fileData = StreamUtilities.ReadExact(fileStream, (int)fileLen);
+                            var fileData = StreamUtilities.ReadExactly(fileStream, (int)fileLen);
                             var encoding = Encoding.UTF8;
                                                         
                             if((fileData[0] == 0xff && fileData[1] == 0xfe) || fileData[1] == 0) {
@@ -227,16 +260,19 @@ namespace DiscImage.EbsDiscTest {
                     } else {
                         UI.PreviewText = "";
                     }
+                } else {
+                    UI.PreviewText = "";
                 }
 
             } else {
 
                 if (CurrentFileSystem == null) {
                     var volume = VolumeManager.GetVolume(itemValue);
+                    itemLabel = $" | Path: {volume.Identity}";
 
                     using (var sparseStream = volume.Open()) {
                         var fsInfo = FileSystemManager.DetectFileSystems(sparseStream);
-                        if (fsInfo != null && fsInfo.Length > 0) {
+                        if (fsInfo != null && fsInfo.Count > 0) {
                             var fileSystem = fsInfo[0].Open(sparseStream);
                             CurrentPath = "";
                             UI.VolumeLabel = $"Volume: {fileSystem.FriendlyName} {GetHumanSize(fileSystem.Size)}";
@@ -244,9 +280,13 @@ namespace DiscImage.EbsDiscTest {
                             UI.VolumeLabel = $"Volume: Unknown {GetHumanSize(volume.Length)}";
                         }
                     }
+                } else {
+                    if(CurrentPath == "") {
+                        itemLabel = "";
+                    } else {
+                        itemLabel = $" | Path: {CurrentPath}";
+                    }
                 }
-
-                itemLabel = $"Path: {CurrentPath}";
             }
 
             UI.ItemLabel = itemLabel.Replace("\\",PathSeparator);
@@ -278,7 +318,7 @@ namespace DiscImage.EbsDiscTest {
 
                 using (var sparseStream = volume.Open()) { 
                     var fsInfo = FileSystemManager.DetectFileSystems(sparseStream);
-                    if (fsInfo != null && fsInfo.Length > 0) {
+                    if (fsInfo != null && fsInfo.Count > 0) {
                         CurrentFileSystem = fsInfo[0].Open(sparseStream);
                         CurrentPath = "";
                         UI.VolumeLabel = $"Volume: {CurrentFileSystem.FriendlyName} {GetHumanSize(CurrentFileSystem.Size)}";
@@ -297,7 +337,8 @@ namespace DiscImage.EbsDiscTest {
                     UI.UpdateCurrentPathItems(Volumes.ToList());
                     CurrentFileSystem = null;
                     CurrentPath = null;
-                    UI.VolumeLabel = "";                 
+                    var volumes = VolumeManager.GetLogicalVolumes();
+                    UI.ItemLabel = $" | Path: {volumes[0].Identity}";
                 } else {
 
                     if (itemValue != "..") {
@@ -333,6 +374,7 @@ namespace DiscImage.EbsDiscTest {
                         }
 
                     } else {
+                        UI.ItemLabel = "";
                         CurrentPath = CurrentPath.Substring(0, CurrentPath.LastIndexOf('\\'));
                         UpdateView();
                     }                    
@@ -342,7 +384,7 @@ namespace DiscImage.EbsDiscTest {
 
         static string GetHumanSize(long size) {
             if (size < 1024) {
-                return $"{size}";
+                return $"{size}B";
             } else if (size < 1024L * 1024L) {
                 return $"{size / 1024.0:0.00}KB";
             } else if (size < 1024L * 1024L * 1024L) {
@@ -356,8 +398,7 @@ namespace DiscImage.EbsDiscTest {
         
         private static void UpdateView() {
             UI.UpdateCurrentPathItems(new string[] { ".." }
-            .Concat(CurrentFileSystem.GetDirectories(CurrentPath).Select(pi => Path.GetFileName(pi))
-            .Concat(CurrentFileSystem.GetFiles(CurrentPath)).Select(pi => Path.GetFileName(pi)))
+            .Concat(CurrentFileSystem.GetFileSystemEntries(CurrentPath).Select(pi => Path.GetFileName(pi)))
             .ToList());
         }
     }

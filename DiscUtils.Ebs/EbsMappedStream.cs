@@ -6,10 +6,7 @@ using DiscUtils.Streams;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DiscUtils.Ebs {
     public class EbsMappedStream : SparseStream {
@@ -104,7 +101,7 @@ namespace DiscUtils.Ebs {
                 throw new IOException($"Failed to read EBS block {block.Index} with HTTP error {result.HttpStatusCode}");
             }
 
-            StreamUtilities.ReadExact(result.BlockData, buffer, offset, BlockSize);
+            StreamUtilities.ReadExactly(result.BlockData, buffer, offset, BlockSize);
         }
         
         public override long Seek(long offset, SeekOrigin origin) {
@@ -133,6 +130,14 @@ namespace DiscUtils.Ebs {
         }
 
         public override void Write(byte[] buffer, int offset, int count) {
+            throw new NotImplementedException();
+        }
+
+        public override int Read(Span<byte> buffer) {
+            throw new NotImplementedException();
+        }
+
+        public override void Write(ReadOnlySpan<byte> buffer) {
             throw new NotImplementedException();
         }
     }
